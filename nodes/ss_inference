@@ -1,0 +1,96 @@
+#/usr/bin/env python3
+
+import rospy
+from sensor_msgs.msg import Image
+import PIL
+from PIL import Image as PILImage
+
+import torch
+import importlib
+#import pdb
+import time
+
+from torch.autograd import Variable
+from torch.utils.data import DataLoader
+from torchvision.transforms import ToTensor, ToPILImage
+
+from ss_segmentation.inference.SS_data_definition_inference import SemanticSegmentationInference
+from ss_segmentation.train.SS_network_design import Net
+
+ARGS_LOAD_WEIGHTS = "model_best.pth"
+ARGS_LOAD_MODEL = "SS_network_design.py"
+
+def load_my_state_dict(g_model, state_dict):
+    own_state = g_model.state_dict()
+    for name, param in state_dict.items():
+        if name not in own_state:
+            continue
+        own_state[name].copy_(param)
+    return g_model
+
+def tensor_to_sensormsg_image(tensor_in):
+    label_out = ToPILImage()(tensor_in)
+    label_out = label_out.convert('L')
+    label_out = PIL.ImageOps.autocontrast(label_out)
+    raw_data = label_out.tobytes('raw')
+    img_out = Image()
+    img_out.header.stamp = rospy.Time.now()
+    img_out.height = g_IMG_HEIGHT
+    img_out.width = g_IMG_WIDTH
+    img_out.data = raw_data
+    img_out.step = g_IMG_WIDTH
+    img_out.encoding = 'mono8'
+    return img_out
+
+def image_callback(msg):
+    start_time = time.time()
+    img_PIL = PILImage.frombytes('L', (msg.width, msg.height), msg.data, 'raw')
+    image = img_PIL.convert('RGB')
+    image = image.resize((g_IMG_WIDTH, g_IMG_HEIGHT), PILImage.ANTIALIAS)
+    transformer = ToTensor()
+    image = transformer(image)
+    image = image.view(1, g_NUM_CHANNELS, g_IMG_HEIGHT, g_IMG_WIDTH)
+    image = image.cuda()
+    inputimg = Variable(image)
+    outputs = g_model(inputimg)
+    time_val = time.time() - start_time
+    rospy.loginfo("Inference time per image : [%ld ms]", time_val*1000)
+    label = outputs[0].max(0)[1].byte().cpu().data
+    label_tensor = label.unsqueeze(0)
+    label_msg_out = tensor_to_sensormsg_image(label_tensor)
+    label_pub.publish(label_msg_out)
+
+def main():
+    rospy.init_node("ss_inference_node", anonymous=True)
+    global g_ARGS_LOAD_DIR
+    g_ARGS_LOAD_DIR = rospy.get_param('~model_directory')
+    global g_NUM_CLASSES
+    g_NUM_CLASSES = rospy.get_param('~class_count')
+    global g_IMG_HEIGHT
+    g_IMG_HEIGHT = rospy.get_param('~image_height')
+    global g_IMG_WIDTH
+    g_IMG_WIDTH = rospy.get_param('~image_width')
+    global g_NUM_CHANNELS
+    g_NUM_CHANNELS = rospy.get_param('~channel_count')
+    modelpath = g_ARGS_LOAD_DIR + ARGS_LOAD_MODEL
+    weightspath = g_ARGS_LOAD_DIR + ARGS_LOAD_WEIGHTS
+    rospy.loginfo("---------- DATA PATHS: ----------")
+    rospy.loginfo("Model File: %s", modelpath)
+    rospy.loginfo("Weight File: %s", weightspath)
+    global g_model
+    g_model = Net(g_NUM_CLASSES)
+    g_model = torch.nn.DataParallel(g_model)
+    g_model = g_model.cuda()
+    g_model = load_my_state_dict(g_model, torch.load(weightspath))
+    rospy.loginfo("Model and weights loaded..")
+    rospy.loginfo("---------------------------------")
+    g_model.eval()
+    rospy.loginfo("Listening for input image topic: ")
+    global label_pub
+    label_pub = rospy.Publisher("label_out", Image, queue_size=10)
+    rospy.Subscriber("image_in", Image, image_callback)
+    rospy.spin()
+
+if __name__ == '__main__':
+    main()
+

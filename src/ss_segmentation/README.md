@@ -4,15 +4,15 @@ This repository contains code needed to train and test a Semantic Segmentation C
 
 Core network architecture is based on ERFNet and code here was developed on top of the original repository. If you use this repository in your work, please cite the original paper along with the necessary Open Vision Camera papers.
 
-The original repository requires a Python3.6 compatible version of PyTorch. This repository has been made backward compatible with Python3.5 based installations of PyTorch too. If you are using our docker container, you don't need to worry about this.
+The original repository requires a Python3.6 compatible version of PyTorch. This repository has been made backward compatible with Python3.5 based installations of PyTorch too. If you are using our docker container, you don't need to worry about this. 
 
 ## Open Vision Computer
 https://github.com/osrf/ovc
 
-## ERFNet References
-**"Efficient ConvNet for Real-time Semantic Segmentation"**, E. Romera, J. M. Alvarez, L. M. Bergasa and R. Arroyo, IEEE Intelligent Vehicles Symposium    (IV), pp. 1789-1794, Redondo Beach (California, USA), June 2017.
+## ERFNet References 
+**"Efficient ConvNet for Real-time Semantic Segmentation"**, E. Romera, J. M. Alvarez, L. M. Bergasa and R. Arroyo, IEEE Intelligent Vehicles Symposium    (IV), pp. 1789-1794, Redondo Beach (California, USA), June 2017. 
 **[Best Student Paper Award]**, [[pdf]](http://www.robesafe.uah.es/personal/eduardo.romera/pdfs/Romera17iv.pdf)
-
+                                                                                 
 **"ERFNet: Efficient Residual Factorized ConvNet for Real-time Semantic Segmentation"**, E. Romera, J. M. Alvarez, L. M. Bergasa and R. Arroyo,            Transactions on Intelligent Transportation Systems (T-ITS), **[Accepted paper, to be published in Dec 2017]**. [[pdf]](http://www.robesafe.uah.es/personal/eduardo.romera/pdfs/Romera17tits.pdf)
 
 ## Usage
@@ -63,4 +63,3 @@ a) You will need to build a barebones installation of ROS that uses Python3 (3.5
 
 You can set up an *independent* version of ROS by following these instructions:\
 https://gist.github.com/ShreyasSkandan/fd8682253d71c960b2b56376db6bd74a
-

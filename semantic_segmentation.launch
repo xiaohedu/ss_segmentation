@@ -1,0 +1,13 @@
+<launch>
+  <node pkg="ss_segmentation" type="ss_inference" name="ss_inference" output="screen">
+
+    <param name="model_directory" value="$(env HOME)/drone_detection_f1/"/>
+    <param name="class_count" value="2"/>
+    <param name="channel_count" value="3"/>
+    <param name="image_height" value="512"/>
+    <param name="image_width" value="640"/>
+
+    <remap from="label_out" to="/ss_segmentation/label"/>
+    <remap from="image_in" to="/fla/ovc_node/right_drop/image_raw"/>
+  </node>
+</launch>

@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>ss_segmentation</name>
+  <version>0.1.0</version>
+  <description>
+    PyTorch CNN based on ERFNet for real-time Semantic Segmentation
+  </description>
+  <maintainer email="sshreyas@seas.upenn.edu">Shreyas Skandan Shivakumar</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+</package>
