@@ -32,7 +32,29 @@ sudo nvidia-docker run -it -v /path/to/shared/folder:/data --ipc=host sshreyas-p
 ```
 
 ### **Training Code**:
-a) Edit the training configuration file - *src/ss_segmentation/config/SS_config_train.py*
+a) Edit the training configuration file:
+```
+src/ss_segmentation/config/SS_config_train.py
+```
+  Some *notes* for setting up the configuration file prior to training - The way the script is set up is that it requires your data to be ".png" files placed in two directories, one which will hold your training dataset and the other that will hold your validation dataset. </br> The subdirectory structure must be two folders in each for "images" and "labels" respectively. The configuration file must point to the location of the "train" dataset and the "validation" datasets. Label images must contain class labels at respective pixel locations in the image. </br>
+  ```
+  ├── /path/to/train
+|   ├── images/
+|       |-- frame00001.png
+|       |-- frame00002.png
+|   └── labels/
+|       |-- frame00001.png
+|       |-- frame00002.png
+├── /path/to/validation
+|   ├── images/
+|       |-- frame00010.png
+|       |-- frame00012.png
+|   └── labels/
+|       |-- frame00010.png
+|       |-- frame00012.png
+```
+  **tl;dr**: data must be ".png" images. organization is /train->{/train/images,train/labels} and /validation->{/validation/images,/validation/labels}. Labels must be images with pixel intensity values corresponding to class labels.
+  
 b) Navigate to the "train" folder of the *ss_segmentation* repository
 ```
 cd /src/ss_segmentation/train/
@@ -47,7 +69,10 @@ CUDA_VISIBLE_DEVICES=0 python SS_train_network.py
 ```
 ### **Testing Code**:
 
-a) Edit the testing configuration file (currently set up to process a directory of images) - *src/ss_segmentation/config/SS_config_batch_inference.py*
+a) Edit the testing configuration file (currently set up to process a directory of images)
+```
+src/ss_segmentation/config/SS_config_batch_inference.py
+```
 b) Launch the inference script *SS_batch_inference_directory.py*
 ```
 python SS_batch_inference_directory.py
@@ -61,11 +86,11 @@ CUDA_VISIBLE_DEVICES=0 python SS_batch_inference_directory.py
 
 a) You will need to build a barebones installation of ROS that uses Python3 (3.5) to be able to subscribe to sensor_msgs::Image and process them using the PyTorch inference script.
 
-You can set up an *independent* ROS install by following these instructions:\
+You can set up an *independent* ROS install by following these instructions:
 https://gist.github.com/ShreyasSkandan/fd8682253d71c960b2b56376db6bd74a
 
 b) You can proceed to use previous ROS packages as usual. When launching the
-ss_segmentation node, make sure to source this ROS environment.\
+ss_segmentation node, make sure to source this ROS environment.
 
 c) Edit the necessary parameters in semantic_segmentation.launch and set the
 required directory location to the directory of your trained model.
