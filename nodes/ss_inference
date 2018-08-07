@@ -6,12 +6,11 @@ import PIL
 from PIL import Image as PILImage
 
 import torch
-import importlib
+#import importlib
 #import pdb
 import time
 
 from torch.autograd import Variable
-from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor, ToPILImage
 
 from ss_segmentation.inference.SS_data_definition_inference import SemanticSegmentationInference
