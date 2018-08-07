@@ -27,13 +27,13 @@ def load_my_state_dict(g_model, state_dict):
         own_state[name].copy_(param)
     return g_model
 
-def tensor_to_sensormsg_image(tensor_in, time_stamp):
+def tensor_to_sensormsg_image(tensor_in, header):
     label_out = ToPILImage()(tensor_in)
     label_out = label_out.convert('L')
     label_out = PIL.ImageOps.autocontrast(label_out)
     raw_data = label_out.tobytes('raw')
     img_out = Image()
-    img_out.header.stamp = time_stamp
+    img_out.header = header
     img_out.height = g_IMG_HEIGHT
     img_out.width = g_IMG_WIDTH
     img_out.data = raw_data
@@ -56,7 +56,7 @@ def image_callback(msg):
     rospy.loginfo("Inference time per image : [%ld ms]", time_val*1000)
     label = outputs[0].max(0)[1].byte().cpu().data
     label_tensor = label.unsqueeze(0)
-    label_msg_out = tensor_to_sensormsg_image(label_tensor, msg.header.stamp)
+    label_msg_out = tensor_to_sensormsg_image(label_tensor, msg.header)
     label_pub.publish(label_msg_out)
 
 def main():
