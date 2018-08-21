@@ -22,13 +22,27 @@ This image contains all the necessary code and libraries required to train the S
 a) First install NVIDIA-DOCKER: https://github.com/NVIDIA/nvidia-docker
 
 b) Pull docker image from Docker-Hub
+
+For NVIDIA Volta GPUs use the following image:
 ```
 docker pull shreyasskandan/sshreyas-pytorch35
 ```
 
-c) Launch the docker image
+For NVIDIA Pascal GPUs use the following image:
 ```
-sudo nvidia-docker run -it -v /path/to/shared/folder:/data --ipc=host sshreyas-pytorch35
+docker pull shreyasskandan/semseg_dl
+```
+
+c) Launch the docker image
+
+For NVIDIA Volta GPUs use the following image:
+```
+sudo nvidia-docker run -it -v /path/to/shared/folder:/data --ipc=host shreyasskandan/sshreyas-pytorch35
+```
+
+For NVIDIA Pascal GPUs use the following image:
+```
+sudo nvidia-docker run -it -v /path/to/shared/folder:/data --ipc=host shreyasskandan/semseg_dl
 ```
 
 ### **Training Code**:
