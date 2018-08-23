@@ -1,8 +1,8 @@
 ###############################################################
 # Main code for training ERFNet-based Semantic Segmentation CNN
-# 			April 2018
+#                       April 2018
 #   Shreyas Skandan Shivakumar | University of Pennsylvania
-# 		Adapted from Eduardo Romera
+#               Adapted from Eduardo Romera
 ###############################################################
 
 import os
@@ -31,7 +31,7 @@ from torchvision.transforms import ToTensor, ToPILImage
 
 from SS_data_definition import SemanticSegmentation
 from utils.util_transform import ToLabel, Colorize
-from utils.util_visualize import Dashboard
+#from utils.util_visualize import Dashboard
 from utils.util_iouEVAL import iouEval, getColorEntry
 
 color_transform = Colorize(NUM_CLASSES)
@@ -41,7 +41,7 @@ class ImageTransform(object):
     def __init__(self, enc, height=IMG_HEIGHT):
         self.enc=enc
         self.height = height
-        
+
     def __call__(self, input, target):
         input =  Resize(self.height, Image.BILINEAR)(input)
         target = Resize(self.height, Image.NEAREST)(target)
@@ -65,15 +65,15 @@ def train(model, enc=False):
     else:
         save_prefix = 'decoder'
     best_acc = 0
-    
+
     weight = torch.ones(NUM_CLASSES)
     if (enc):
-        weight[0] = CLASS_0_WEIGHT	
+        weight[0] = CLASS_0_WEIGHT
     else:
         weight[0] = CLASS_0_WEIGHT
     weight[1] = CLASS_1_WEIGHT
 
-    co_transform = ImageTransform(enc, height=IMG_HEIGHT) 
+    co_transform = ImageTransform(enc, height=IMG_HEIGHT)
     co_transform_val = ImageTransform(enc, height=IMG_HEIGHT)
     dataset_train = SemanticSegmentation(ARGS_TRAIN_DIR, co_transform)
     dataset_val = SemanticSegmentation(ARGS_VAL_DIR, co_transform_val)
@@ -88,12 +88,21 @@ def train(model, enc=False):
 
     if (enc):
         modeltxtpath = savedir + "/model_encoder.txt"
+        with open(savedir + "/encoder_train_log.txt", "w") as enc_train_log:
+            enc_train_log.write(str("loss,iou,class_0,class_1,learning_rate\n"))
+        with open(savedir + "/encoder_val_log.txt", "w") as enc_val_log:
+            enc_val_log.write(str("loss,iou,class_0,class_1,learning_rate\n"))
     else:
-        modeltxtpath = savedir + "/model.txt"    
+        modeltxtpath = savedir + "/model.txt"
+        with open(savedir + "/decoder_train_log.txt", "w") as dec_train_log:
+            dec_train_log.write(str("loss,iou,class_0,class_1,learning_rate\n"))
+        with open(savedir + "/decoder_val_log.txt", "w") as dec_val_log:
+            dec_val_log.write(str("loss,iou,class_0,class_1,learning_rate\n"))
+
     with open(modeltxtpath, "w") as myfile:
         myfile.write(str(model))
 
-    optimizer = Adam(model.parameters(), OPT_LEARNING_RATE_INIT, OPT_BETAS, eps=OPT_EPS_LOW, weight_decay=OPT_WEIGHT_DECAY)   
+    optimizer = Adam(model.parameters(), OPT_LEARNING_RATE_INIT, OPT_BETAS, eps=OPT_EPS_LOW, weight_decay=OPT_WEIGHT_DECAY)
 
     start_epoch = 1
     if ARGS_RESUME:
@@ -110,16 +119,16 @@ def train(model, enc=False):
         best_acc = checkpoint['best_acc']
         print("=> Loaded checkpoint at epoch {})".format(checkpoint['epoch']))
 
-    lambda1 = lambda epoch: pow((1-((epoch-1)/ARGS_NUM_EPOCHS)),0.9)  
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)  
+    lambda1 = lambda epoch: pow((1-((epoch-1)/ARGS_NUM_EPOCHS)),0.9)
+    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
 
     for epoch in range(start_epoch, ARGS_NUM_EPOCHS + 1):
         print("--------------- [TRAINING] Epoch #", epoch, "---------------")
-        scheduler.step(epoch) 
+        scheduler.step(epoch)
         epoch_loss = []
         time_train = []
         doIouTrain = ARGS_IOU_TRAIN
-        doIouVal =  ARGS_IOU_VAL  
+        doIouVal =  ARGS_IOU_VAL
 
         if (doIouTrain):
             iouEvalTrain = iouEval(NUM_CLASSES)
@@ -149,22 +158,29 @@ def train(model, enc=False):
             time_train.append(time.time() - start_time)
 
             if (doIouTrain):
-                iouEvalTrain.addBatch(outputs.max(1)[1].unsqueeze(1).data, targets.data)      
+                iouEvalTrain.addBatch(outputs.max(1)[1].unsqueeze(1).data, targets.data)
 
             if ARGS_STEPS_LOSS > 0 and step % ARGS_STEPS_LOSS == 0:
                 average = sum(epoch_loss) / len(epoch_loss)
-                print("Loss: {average} (epoch: {epoch}, step: {step})// Avg time/img: {avgtime} s".format(average=average, epoch=epoch, step=step, avgtime=(sum(time_train) / len(time_train) / ARGS_BATCH_SIZE)))
-            
+                print("Loss: {average} (epoch: {epoch}, step: {step}) | Avg time per image: {avgtime} s".format(average=average, epoch=epoch, step=step, avgtime=(sum(time_train) / len(time_train) / ARGS_BATCH_SIZE)))
+
         average_epoch_loss_train = sum(epoch_loss) / len(epoch_loss)
         print ("Average loss after epoch : {avgloss}".format(avgloss=average_epoch_loss_train))
- 
+
         iouTrain = 0
         if (doIouTrain):
             iouTrain, iou_classes = iouEvalTrain.getIoU()
             iouStr = getColorEntry(iouTrain)+'{:0.2f}'.format(iouTrain*100) + '\033[0m'
             print ("IoU on training data after EPOCH: ", iouStr, "%")
 
-        print("\n---------- [VALIDATING] Epoch #", epoch, "----------")
+        if (enc):
+            with open(savedir + "/encoder_train_log.txt", "a") as enc_train_log:
+                enc_train_log.write("%f,%f,%f,%f,%f\n" % (average_epoch_loss_train, iouTrain*100, iou_classes[0], iou_classes[1], usedLr))
+        else:
+            with open(savedir + "/decoder_train_log.txt", "a") as dec_train_log:
+                dec_train_log.write("%f,%f,%f,%f,%f\n" % (average_epoch_loss_train, iouTrain*100, iou_classes[0], iou_classes[1], usedLr))
+
+        print("\n--------------- [VALIDATING] Epoch #", epoch, "---------------")
         model.eval()
         epoch_loss_val = []
         time_val = []
@@ -178,20 +194,20 @@ def train(model, enc=False):
                 images = images.cuda()
                 labels = labels.cuda()
 
-            inputs = Variable(images, volatile=True) 
+            inputs = Variable(images, volatile=True)
             targets = Variable(labels, volatile=True)
-            outputs = model(inputs, only_encode=enc) 
+            outputs = model(inputs, only_encode=enc)
 
             loss = criterion(outputs, targets[:, 0])
             epoch_loss_val.append(loss.data[0])
             time_val.append(time.time() - start_time)
-            
+
             if (doIouVal):
                 iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, targets.data)
 
             if ARGS_STEPS_LOSS > 0 and step % ARGS_STEPS_LOSS == 0:
                 average = sum(epoch_loss_val) / len(epoch_loss_val)
-                print("Testing loss: {average} (epoch: {epoch}, step: {step}) // Avg time/img: {avgstep} s".format(average=average, epoch=epoch, step=step, avgstep=(sum(time_val) / len(time_val) / ARGS_BATCH_SIZE)))
+                print("Testing loss: {average} (epoch: {epoch}, step: {step}) | Avg time per image: {avgstep} s".format(average=average, epoch=epoch, step=step, avgstep=(sum(time_val) / len(time_val) / ARGS_BATCH_SIZE)))
 
         average_epoch_loss_val = sum(epoch_loss_val) / len(epoch_loss_val)
 
@@ -201,15 +217,22 @@ def train(model, enc=False):
             iouStr = getColorEntry(iouVal)+'{:0.2f}'.format(iouVal*100) + '\033[0m'
             print ("IoU on test data after epoch: ", iouStr, "%")
 
+        if (enc):
+            with open(savedir + "/encoder_val_log.txt", "a") as enc_val_log:
+                enc_val_log.write("%f,%f,%f,%f,%f\n" % (average_epoch_loss_val, iouVal*100, iou_val_classes[0], iou_val_classes[1], usedLr))
+        else:
+            with open(savedir + "/decoder_val_log.txt", "a") as dec_val_log:
+                dec_val_log.write("%f,%f,%f,%f,%f\n" % (average_epoch_loss_val, iouVal*100, iou_val_classes[0], iou_val_classes[1], usedLr))
+
         if iouVal == 0:
             current_acc = -average_epoch_loss_val
         else:
-            current_acc = iouVal 
+            current_acc = iouVal
         is_best = current_acc > best_acc
         best_acc = max(current_acc, best_acc)
         if enc:
             filenameCheckpoint = savedir + '/checkpoint_enc.pth.tar'
-            filenameBest = savedir + '/model_best_enc.pth.tar'    
+            filenameBest = savedir + '/model_best_enc.pth.tar'
         else:
             filenameCheckpoint = savedir + '/checkpoint.pth.tar'
             filenameBest = savedir + '/model_best.pth.tar'
@@ -235,12 +258,12 @@ def train(model, enc=False):
             print("Saving to: {filenamebest} (epoch: {epoch})".format(filenamebest=filenamebest, epoch=epoch))
             if (not enc):
                 with open(savedir + "/best.txt", "w") as myfile:
-                    myfile.write("Best epoch is %d, with Val-IoU= %.4f" % (epoch, iouVal))   
+                    myfile.write("Best epoch is %d, with Val-IoU= %.4f" % (epoch, iouVal))
             else:
                 with open(savedir + "/best_encoder.txt", "w") as myfile:
-                    myfile.write("Best epoch is %d, with Val-IoU= %.4f" % (epoch, iouVal))           
-        print ('\n\n')   
-    return(model)  
+                    myfile.write("Best epoch is %d, with Val-IoU= %.4f" % (epoch, iouVal))
+        print ('\n\n')
+    return(model)
 
 def save_checkpoint(state, is_best, filenameCheckpoint, filenameBest):
     torch.save(state, filenameCheckpoint)
@@ -253,7 +276,7 @@ def main():
     savedir = ARGS_SAVE_DIR
     if not os.path.exists(savedir):
         os.makedirs(savedir)
-    os.makedirs(savedir + '/plotdata')
+    #os.makedirs(savedir + '/plotdata')
 
     model_file = importlib.import_module(ARGS_MODEL)
     model = model_file.Net(NUM_CLASSES)
@@ -261,7 +284,7 @@ def main():
     if ARGS_CUDA:
         model = torch.nn.DataParallel(model).cuda()
     if ARGS_STATE:
-        def load_my_state_dict(model, state_dict):  
+        def load_my_state_dict(model, state_dict):
             own_state = model.state_dict()
             for name, param in state_dict.items():
                 if name not in own_state:
@@ -282,13 +305,13 @@ def main():
             pretrainedEnc.load_state_dict(torch.load(ARGS_PRETRAINED_ENCODER)['state_dict'])
             pretrainedEnc = next(pretrainedEnc.children()).features.encoder
             if (not ARGS_CUDA):
-                pretrainedEnc = pretrainedEnc.cpu()     
+                pretrainedEnc = pretrainedEnc.cpu()
         else:
             pretrainedEnc = next(model.children()).encoder
         model = model_file.Net(NUM_CLASSES, encoder=pretrainedEnc)
         if ARGS_CUDA:
             model = torch.nn.DataParallel(model).cuda()
-    model = train(model, False)   
+    model = train(model, False)
     print("#################### TRAINING FINISHED ####################")
 
 if __name__ == '__main__':
